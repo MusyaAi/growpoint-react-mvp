@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* База — можно оставить минимально */
+@layer base {
+  html, body { @apply h-full; }
+}
