@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp, selectIsAuthed, selectUserName, selectAvatarUrl } from '@/components/store';
+import { APP_NAME } from '@/components/constants'; // добавили импорт
 
 const AUThed_ITEMS = [
   { href: '/', label: 'Дашборд' },
@@ -44,7 +45,7 @@ export default function TopNav() {
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* Лого */}
         <Link href="/" className="font-semibold text-gray-900">
-          <span className="tracking-tight">growpoint</span>
+          <span className="tracking-tight">{APP_NAME}</span>
           <span className="text-emerald-500">.</span>
         </Link>
 

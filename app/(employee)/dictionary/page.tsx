@@ -1,4 +1,6 @@
-export const metadata = { title: "GrowPoint — Эмоциональный словарь" };
+import { APP_NAME } from '@/components/constants';
+
+export const metadata = { title: `${APP_NAME} — Эмоциональный словарь` };
 
 const groups = [
   { name: "Радость", color: "text-amber-700", words: ["Радость", "Веселье", "Восторг", "Спокойствие"] },

@@ -1,4 +1,6 @@
-export const metadata = { title: 'GrowPoint — HR' };
+import { APP_NAME } from '@/components/constants';
+
+export const metadata = { title: `${APP_NAME} — HR` };
 
 export default function HrHome() {
   return (

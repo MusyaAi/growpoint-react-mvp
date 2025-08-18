@@ -1,4 +1,6 @@
-export const metadata = { title: 'GrowPoint — Auth' };
+import { APP_NAME } from '@/components/constants';
+
+export const metadata = { title: `${APP_NAME} — Auth` };
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (

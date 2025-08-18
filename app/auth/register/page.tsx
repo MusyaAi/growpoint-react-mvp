@@ -45,8 +45,8 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Создайте аккаунт GrowPoint"
-      subtitle="Путь зрелости, AI-наставник, чек-ины и библиотека практик."
+      title="Создайте аккаунт ${APP_NAME}"
+      subtitle="AI-платформа развития soft skills и лидерства с персональными треками под ваши цели"
       // чуть сильнее визуальный баланс для длинной формы
       formMinH="min-h-[620px]"
     >

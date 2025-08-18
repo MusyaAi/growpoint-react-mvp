@@ -1,4 +1,6 @@
-export const metadata = { title: 'GrowPoint — Admin' };
+import { APP_NAME } from '@/components/constants';
+
+export const metadata = { title: `${APP_NAME} — Admin` };
 
 export default function AdminHome() {
   return (

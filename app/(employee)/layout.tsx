@@ -1,6 +1,6 @@
 'use client';
 
-import Guard from '@/components/Guard';      // если Гуард ещё не сделали — временно замени на React.Fragment
+import Guard from '@/components/Guard';      
 import TopNav from '@/components/TopNav';
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {

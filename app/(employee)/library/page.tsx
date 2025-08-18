@@ -1,4 +1,6 @@
-export const metadata = { title: "GrowPoint — Библиотека" };
+import { APP_NAME } from '@/components/constants';
+
+export const metadata = { title: `${APP_NAME} — Библиотека` };
 
 const items = [
   { title: "Эмоции: что я чувствую", level: 1 },

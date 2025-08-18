@@ -1,7 +1,8 @@
 {
-  "name": "growpoint-react-mvp",
+  "name": "pivotgrow-react-mvp",
   "version": "0.1.0",
   "private": true,
+  "description": "PivotGrow — employee growth & wellbeing platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
