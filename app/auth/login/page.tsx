@@ -25,7 +25,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title={`Добро пожаловать в ${APP_NAME}`}
-      subtitle="AI-платформа развития soft skills и лидерства с персональными треками под ваши цели"
+      subtitle="AI-платформа развития soft skills и лидерства с персональными треками под ваши цели."
     >
       <h2 className="text-2xl font-bold text-emerald-700 mb-4">Вход</h2>
       <form onSubmit={onSubmit} className="space-y-4">

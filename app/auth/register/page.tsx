@@ -6,6 +6,7 @@ import { useApp, Role } from '@/components/store';
 import AuthShell from '@/components/AuthShell';
 import { TextField } from '@/components/TextField';
 import { SelectField } from '@/components/SelectField';
+import { APP_NAME } from '@/components/constants';
 
 function isEmail(v: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -45,8 +46,8 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Создайте аккаунт ${APP_NAME}"
-      subtitle="AI-платформа развития soft skills и лидерства с персональными треками под ваши цели"
+      title={`Создайте аккаунт в ${APP_NAME}`}
+      subtitle="AI-платформа развития soft skills и лидерства с персональными треками под ваши цели."
       // чуть сильнее визуальный баланс для длинной формы
       formMinH="min-h-[620px]"
     >
