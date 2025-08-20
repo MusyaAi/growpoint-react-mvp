@@ -1,8 +1,13 @@
 'use client';
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-/* ---------- доменные типы ---------- */
+/* ---------- импорты для RBAC и API-ответа ---------- */
+import type { Role } from '@/lib/models/roles';
+import type { AuthResponse } from '@/lib/api/auth';
+
+/* ---------- доменные типы (как у вас были) ---------- */
 export type Flags = { sleep: boolean; food: boolean; activity: boolean; rest: boolean };
 export type CheckIn = { id: string; dateISO: string; emotion: string; note?: string; flags?: Flags };
 export type JournalEntry = { id: string; dateISO: string; text: string; emotion?: string };
@@ -22,13 +27,24 @@ export type Settings = {
   email?: string;
 };
 
-export type Role = 'employee' | 'hr' | 'admin';
+/* ---------- старая модель auth (оставляем для совместимости) ---------- */
 export type Auth = {
   isAuth: boolean;
-  role: Role;
+  role: Role;              // текущая активная роль (синхронизируем с user.activeRole)
   onboardingDone: boolean;
   email?: string;
 };
+
+/* ---------- новая модель пользователя стора ---------- */
+export type AppUser = {
+  email: string;
+  roles: Role[];           // все роли пользователя
+  activeRole: Role;        // активная роль (для маршрутизации/guard’ов)
+};
+
+/* login теперь принимает и новый AuthResponse, и старую форму */
+type MinimalAuthSession = { email?: string; role: Role };
+type LoginArg = AuthResponse | MinimalAuthSession;
 
 /* ---------- state ---------- */
 type State = {
@@ -38,6 +54,10 @@ type State = {
   lastCheckIn?: CheckIn;
   journal: JournalEntry[];
 
+  /* новая сущность пользователя */
+  user: AppUser | null;
+
+  /* старая auth-секция — оставляем для обратной совместимости */
   auth: Auth;
 
   /* actions: существующие */
@@ -56,10 +76,11 @@ type State = {
   updateSettings: (s: Partial<Settings>) => void;
   updateEmail: (email: string) => void;
 
-  /* auth */
-  login: (p: { email?: string; role: Role }) => void;
+  /* auth / rbac */
+  login: (p: LoginArg) => void;    // теперь поддерживает AuthResponse И старый формат
   logout: () => void;
-  setRole: (role: Role) => void;
+  setRole: (role: Role) => void;   // оставляем как алиас для setActiveRole
+  setActiveRole: (role: Role) => void;
   setOnboardingDone: (done: boolean) => void;
 };
 
@@ -72,6 +93,8 @@ export const useApp = create<State>()(
       checkins: [],
       lastCheckIn: undefined,
       journal: [],
+
+      user: null,
 
       auth: { isAuth: false, role: 'employee', onboardingDone: true, email: undefined },
 
@@ -117,21 +140,74 @@ export const useApp = create<State>()(
         set({ profile:  { ...get().profile,  email } });
       },
 
-      /* auth */
-      login: ({ email, role }) => {
-        const prev = get().auth;
-        set({ auth: { ...prev, isAuth: true, role, email } });
+      /* ---------- auth / rbac ---------- */
+      login: (arg: LoginArg) => {
+        // Новый путь: пришёл полноценный AuthResponse из API-слоя
+        if ((arg as AuthResponse)?.user) {
+          const res = arg as AuthResponse;
+          const primary = res.user.roles[0]; // по умолчанию первая роль; можно сохранять выбор
+          set({
+            user: {
+              email: res.user.email,
+              roles: res.user.roles,
+              activeRole: primary,
+            },
+            // синхронизируем старую auth-модель для обратной совместимости
+            auth: {
+              ...get().auth,
+              isAuth: true,
+              email: res.user.email,
+              role: primary,
+            },
+          });
+          return;
+        }
+
+        // Старый путь: { email?, role } — поддерживаем, чтобы не ломать старый код
+        const { email, role } = arg as MinimalAuthSession;
+        set({
+          user: {
+            email: email ?? 'unknown@local',
+            roles: [role],
+            activeRole: role,
+          },
+          auth: {
+            ...get().auth,
+            isAuth: true,
+            email,
+            role,
+          },
+        });
       },
+
       logout: () => {
         const prev = get().auth;
-        set({ auth: { ...prev, isAuth: false } });  // данные профиля/локальные записи не трогаем
+        set({
+          user: null,
+          auth: { ...prev, isAuth: false },
+        });
       },
-      setRole: (role) => set({ auth: { ...get().auth, role } }),
+
+      setActiveRole: (role: Role) => {
+        const u = get().user;
+        if (!u) return;
+        if (!u.roles.includes(role)) return; // не даём выбрать роль, которой у пользователя нет
+        set({
+          user: { ...u, activeRole: role },
+          auth: { ...get().auth, role }, // поддерживаем старое поле auth.role
+        });
+      },
+
+      // Старое API — оставляем как алиас, чтобы не искать все вызовы
+      setRole: (role: Role) => {
+        get().setActiveRole(role);
+      },
+
       setOnboardingDone: (onboardingDone) => set({ auth: { ...get().auth, onboardingDone } }),
     }),
     {
       name: 'growpoint-state',
-      version: 5,
+      version: 6, // ↑ bump: добавили поле user и поменяли login-контракт
       storage: createJSONStorage(() => localStorage),
       migrate: (state: any) => {
         if (!state) return state;
@@ -140,6 +216,7 @@ export const useApp = create<State>()(
         if (!state.checkins) state.checkins = [];
         if (!state.journal)  state.journal  = [];
         if (!state.auth)     state.auth     = { isAuth: false, role: 'employee', onboardingDone: true, email: undefined };
+        if (typeof state.user === 'undefined') state.user = null; // новое поле
         return state as State;
       },
       partialize: (s) => ({
@@ -149,13 +226,19 @@ export const useApp = create<State>()(
         lastCheckIn: s.lastCheckIn,
         journal: s.journal,
         auth: s.auth,
+        user: s.user, // сохраняем в storage
       }),
     }
   )
 );
 
 /* ---------- удобные селекторы для компонентов ---------- */
-export const selectIsAuthed   = (s: State) => s.auth.isAuth;
-export const selectUserName   = (s: State) => s.profile.name || 'Гость';
-export const selectAvatarUrl  = (s: State) => s.profile.avatarUrl;
-export const selectRole       = (s: State) => s.auth.role;
+export const selectIsAuthed    = (s: State) => s.auth.isAuth;
+export const selectUserName    = (s: State) => s.profile.name || 'Гость';
+export const selectAvatarUrl   = (s: State) => s.profile.avatarUrl;
+
+/** старая семантика (читает auth.role), оставляем для обратной совместимости */
+export const selectRole        = (s: State) => s.auth.role;
+
+/** новая семантика (читает активную роль из user, с fallback на auth.role) */
+export const selectActiveRole  = (s: State) => s.user?.activeRole ?? s.auth.role;
