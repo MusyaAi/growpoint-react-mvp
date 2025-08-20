@@ -1,20 +1,45 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useApp, selectIsAuthed, selectUserName, selectAvatarUrl } from '@/components/store';
-import { APP_NAME } from '@/components/constants'; // добавили импорт
+import {
+  useApp,
+  selectIsAuthed,
+  selectUserName,
+  selectAvatarUrl,
+  selectRole,
+} from '@/components/store';
+import { APP_NAME } from '@/components/constants';
+import type { Role } from '@/lib/models/roles';
+import { markLoggedOut } from '@/lib/api/auth'; // NEW
+import UserMenu from './UserMenu';
 
-const AUThed_ITEMS = [
-  { href: '/', label: 'Дашборд' },
-  { href: '/library', label: 'Библиотека' },
-  { href: '/dictionary', label: 'Словарь' },
-  { href: '/settings', label: 'Настройки' },
-];
+type NavItem = { href: string; label: string };
 
-function getInitials(name?: string) {
-  if (!name) return '🙂';
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map(p => p[0]?.toUpperCase() ?? '').join('') || '🙂';
+function makeItems(role: Role): NavItem[] {
+  switch (role) {
+    case 'employee':
+      return [
+        { href: '/',           label: 'Дашборд' },
+        { href: '/library',    label: 'Библиотека' },
+        { href: '/dictionary', label: 'Словарь' },
+      ];
+    case 'hr':
+      return [
+        { href: '/hr',            label: 'Дашборд' },
+        { href: '/hr/users',      label: 'Пользователи' },
+        { href: '/hr/invites',    label: 'Приглашения' },
+        { href: '/hr/analytics',  label: 'Аналитика' },
+      ];
+    case 'admin':
+    case 'superadmin':
+      return [
+        { href: '/admin/companies', label: 'Компании' },
+        { href: '/admin/modules',   label: 'Модули/контент' },
+        { href: '/admin/settings',  label: 'Настройки' },
+      ];
+    default:
+      return [{ href: '/', label: 'Дашборд' }];
+  }
 }
 
 export default function TopNav() {
@@ -24,41 +49,57 @@ export default function TopNav() {
   const isAuthed  = useApp(selectIsAuthed);
   const userName  = useApp(selectUserName);
   const avatarUrl = useApp(selectAvatarUrl);
-  const login     = useApp(s => s.login);
-  const logout    = useApp(s => s.logout);
+  const role      = useApp(selectRole);
 
-  const items = AUThed_ITEMS; // при желании можно показать меньше пунктов для неавторизованных
+  // если в сторе нет массива ролей — дефолтим к полному списку для демо
+  const rawRoles = useApp((s: any) => (s.user?.roles ?? s.auth?.roles ?? null)) as Role[] | null;
+  const availableRoles: Role[] = (rawRoles && rawRoles.length
+    ? rawRoles
+    : (['employee','hr','admin','superadmin'] as Role[]));
 
-  const handleLogin = () => {
-    // мок-логин для MVP: считаем, что вошли как employee
-    login({ email: undefined, role: 'employee' });
-    router.push('/'); // на дашборд
+  const setRole = useApp(s => s.setRole);
+  const logout  = useApp(s => s.logout);
+
+  const items = makeItems(role);
+
+  const handleChangeRole = (r: Role) => {
+    if (r === role) return;
+    setRole(r);
+    // дефолтные маршруты по ролям
+    if (r === 'employee') router.push('/');
+    else if (r === 'hr') router.push('/hr');
+    else router.push('/admin'); // admin & superadmin
   };
 
   const handleLogout = () => {
+    // важно очистить «текущий email» для getMe()
+    markLoggedOut();
     logout();
     router.push('/auth/login');
   };
 
   return (
-    <nav className="w-full bg-white border-b">
-      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+    <nav className="w-full bg-white border-b sticky top-0 z-40" role="navigation" aria-label="Главная навигация">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         {/* Лого */}
-        <Link href="/" className="font-semibold text-gray-900">
+        <Link href="/" className="font-semibold text-gray-900" aria-label={`${APP_NAME} — на главную`}>
           <span className="tracking-tight">{APP_NAME}</span>
           <span className="text-emerald-500">.</span>
         </Link>
 
-        {/* Меню */}
-        <ul className="flex items-center gap-5 text-sm">
+        {/* Меню разделов (контекстное по роли) */}
+        <ul className="flex items-center gap-6 text-sm">
           {items.map((it) => {
-            const active = path === it.href || (it.href !== '/' && path?.startsWith(it.href));
+            const active =
+              path === it.href || (it.href !== '/' && path?.startsWith(it.href));
             return (
               <li key={it.href}>
                 <Link
                   href={it.href}
                   className={`px-2 py-1 rounded-md ${
-                    active ? 'text-emerald-700 font-semibold' : 'text-gray-600 hover:text-gray-900'
+                    active
+                      ? 'text-emerald-700 font-semibold'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   {it.label}
@@ -68,38 +109,22 @@ export default function TopNav() {
           })}
         </ul>
 
-        {/* Правый блок: вход/выход */}
+        {/* Правая зона */}
         <div className="flex items-center gap-3">
           {isAuthed ? (
-            <>
-              {/* аватар/инициалы и имя */}
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center overflow-hidden">
-                  {avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-xs text-emerald-700">{getInitials(userName)}</span>
-                  )}
-                </div>
-                <span className="text-sm text-gray-700 hidden sm:inline">Привет, {userName}!</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="text-sm px-3 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Выйти
-              </button>
-            </>
+            <UserMenu
+              name={userName}
+              avatarUrl={avatarUrl}
+              currentRole={role}
+              availableRoles={availableRoles}
+              onChangeRole={handleChangeRole}
+              onLogout={handleLogout}
+            />
           ) : (
             <>
               <Link
                 href="/auth/login"
                 className="text-sm px-3 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleLogin(); // мок-вход без формы; если хочешь форму — убери это и оставь просто ссылку
-                }}
               >
                 Войти
               </Link>

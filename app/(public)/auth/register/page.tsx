@@ -76,7 +76,7 @@ export default function RegisterPage() {
           label="Основная роль"
           value={primaryRole}
           onChange={setPrimaryRole}
-          options={[ 'employee','hr','admin_company' ].map(r => ({ value: r as Role, label: roleLabel(r as Role) }))}
+          options={[ 'employee','hr','admin' ].map(r => ({ value: r as Role, label: roleLabel(r as Role) }))}
         />
 
         {error && <p className="text-sm text-red-600">{error}</p>}
