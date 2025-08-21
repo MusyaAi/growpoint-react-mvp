@@ -21,7 +21,7 @@ function makeItems(role: Role): NavItem[] {
       return [
         { href: '/',           label: 'Дашборд' },
         { href: '/library',    label: 'Библиотека' },
-        { href: '/dictionary', label: 'Словарь' },
+        { href: '/emotional-dictionary', label: 'Словарь' },
       ];
     case 'hr':
       return [
