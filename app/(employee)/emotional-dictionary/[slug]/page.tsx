@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Emotion } from '@/lib/ds/emotions';
+import { FAMILY_LABEL_RU } from '@/lib/ds/emotions';
 
 type FullEmotion = Emotion & {
   immersion?: string[];
@@ -66,7 +67,7 @@ export default function EmotionDetailsPage({ params }: { params: { slug: string 
         <div className="text-4xl" aria-hidden>{data.emoji}</div>
         <div>
           <div className="text-[10px] uppercase tracking-wider text-emerald-700 font-semibold">
-            {data.familyLabel}
+            {FAMILY_LABEL_RU[data.family]}
           </div>
           <h1 className="text-3xl font-bold text-gray-900">{data.title}</h1>
           {data.subtitle && <p className="mt-1 text-gray-600">{data.subtitle}</p>}
