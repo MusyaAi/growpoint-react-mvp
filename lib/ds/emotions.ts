@@ -155,3 +155,20 @@ export function listEmotions(params?: {
 export function byIdOrSlug(slug: string): Emotion | undefined {
   return emotions.find(e => e.id === slug || e.slug === slug);
 }
+// ---- RICH glue -------------------------------------------------------------
+
+import type { RichEmotionDoc } from './emotions.rich/types';
+import { getRichBySlug } from './emotions.rich';
+
+export type EmotionRich = Emotion & Partial<Omit<RichEmotionDoc, 'slug'>>;
+
+export function getEmotionRich(slugOrId: string): EmotionRich | undefined {
+  const base = byIdOrSlug(slugOrId);
+  if (!base) return undefined;
+
+  const rich = getRichBySlug(base.slug);
+  if (!rich) return base as EmotionRich;
+
+  const { slug: _drop, ...rest } = rich;
+  return { ...base, ...rest } as EmotionRich;
+}
