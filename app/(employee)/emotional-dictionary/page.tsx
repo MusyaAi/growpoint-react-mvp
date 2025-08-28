@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import EmotionGrid from '@/components/EmotionGrid';
 import type { Emotion, EmotionFamily } from '@/lib/ds/emotions';
 import { FAMILY_LABEL_RU } from '@/lib/ds/emotions';
@@ -13,12 +14,48 @@ const FAMILY_ORDER: EmotionFamily[] = [
 ];
 
 export default function EmotionalDictionaryPage() {
-  const [q, setQ] = useState('');
-  const [family, setFamily] = useState<'' | EmotionFamily>('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // инициализируем состояние из URL
+  const [q, setQ] = useState<string>(searchParams.get('search') ?? '');
+  const [family, setFamily] = useState<'' | EmotionFamily>(
+    (searchParams.get('family') as EmotionFamily | null) ?? ''
+  );
+
   const [items, setItems] = useState<Emotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // если URL меняется извне (напр., переход по хлебной крошке),
+  // подтягиваем значения в инпуты/селект
+  useEffect(() => {
+    const urlQ = searchParams.get('search') ?? '';
+    const urlFamily = (searchParams.get('family') as EmotionFamily | null) ?? '';
+    // обновляем только если реально отличаются, чтобы не дёргать ввод пользователя
+    if (urlQ !== q) setQ(urlQ);
+    if (urlFamily !== family) setFamily(urlFamily);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]); // зависим только от URL-параметров
+
+  // синхронизация URL ← состояние
+  useEffect(() => {
+    const curQ = searchParams.get('search') ?? '';
+    const curF = searchParams.get('family') ?? '';
+    const nextQ = q.trim();
+    const nextF = family;
+
+    if (curQ === nextQ && curF === nextF) return;
+
+    const params = new URLSearchParams();
+    if (nextQ) params.set('search', nextQ);
+    if (nextF) params.set('family', nextF);
+    const qs = params.toString();
+    router.replace(`/emotional-dictionary${qs ? `?${qs}` : ''}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, family]);
+
+  // загрузка списка
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -52,11 +89,12 @@ export default function EmotionalDictionaryPage() {
   );
 
   return (
-    // Фон на всю ширину и высоту экрана, «подъезжаем» под TopNav
+    // full-bleed фон (как у тебя было красиво)
     <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen bg-emerald-100 -mt-8">
       <div className="min-h-screen">
         {/* Контентный контейнер */}
         <div className="mx-auto max-w-6xl px-4 py-8">
+
           {/* Заголовок + линк назад */}
           <div className="flex items-center justify-between">
             <div>

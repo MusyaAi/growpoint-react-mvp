@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { EmotionRich } from '@/lib/ds/emotions';
+import { FAMILY_LABEL_RU } from '@/lib/ds/emotions';
 
 // Иконки вкладок
 const icons: Record<string, string> = {
@@ -19,7 +20,7 @@ const icons: Record<string, string> = {
 
 // Ключи localStorage
 const LSK_FAVORITES = 'pg:favorites';
-const LSK_STUDIED  = 'pg:studied';
+const LSK_STUDIED = 'pg:studied';
 
 // Сбор вкладок по наличию контента
 function buildTabs(e: EmotionRich | null) {
@@ -108,16 +109,13 @@ export default function EmotionDetailsPage({ params }: { params: { slug: string 
     if (!active && tabs.length) setActive(tabs[0]);
   }, [tabs, active]);
 
-  // прогресс по семейству
+  // прогресс по семейству (MVP-эвристика)
   const familyCounts = useMemo(() => {
     if (!data) return { familyTotal: 0, familyStudied: 0 };
-    // простая оценка: сколько эмоций в этом семействе среди 33 карточек
-    // чтобы не тащить весь список — берем эвристику из slug-ов studied
     const studied = loadSet(LSK_STUDIED);
     const studiedArr = Array.from(studied);
     const familyStudied = studiedArr.filter((s) => s !== data.slug && s.length > 0).length + 1;
-    // для MVP выставим фиксированный familyTotal (например 3 в семействе shame)
-    const familyTotal = 3;
+    const familyTotal = 3; // для shame
     return { familyTotal, familyStudied: Math.min(familyStudied, familyTotal) };
   }, [data]);
 
@@ -162,39 +160,43 @@ export default function EmotionDetailsPage({ params }: { params: { slug: string 
       <div className="min-h-screen">
         {/* Шапка */}
         <header className="mx-auto max-w-6xl px-4 pt-8">
-          <nav className="text-sm text-emerald-700/80">
-            <Link href="/emotional-dictionary" className="hover:underline">
-              Библиотека
-            </Link>
-            <span className="mx-1">/</span>
-            <span className="hover:underline">{data.family.toUpperCase()}</span>
-            <span className="mx-1">/</span>
-            <span className="text-gray-700">{data.title}</span>
-          </nav>
-          <div className="mt-3 flex items-center gap-4">
-            <div className="text-5xl" aria-hidden>
-              {data.emoji}
-            </div>
-            <div>
-              <div
-                className="text-[10px] uppercase tracking-wider font-semibold"
-                style={{ color: data.color }}
-              >
-                Семейство: {data.family.toUpperCase()}
-              </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">
-                {data.title}
-              </h1>
-              {data.subtitle && <p className="mt-1 text-gray-600">{data.subtitle}</p>}
-            </div>
-          </div>
-        </header>
+  <div className="flex items-start justify-between gap-6">
+    {/* Левая часть: эмодзи + заголовок */}
+    <div className="flex items-center gap-4">
+      <div className="text-5xl" aria-hidden>{data.emoji}</div>
+      <div>
+        <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: data.color }}>
+          Семейство: {data.family.toUpperCase()}
+        </div>
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">
+          {data.title}
+        </h1>
+        {data.subtitle && <p className="mt-1 text-gray-600">{data.subtitle}</p>}
+      </div>
+    </div>
 
+    {/* Правая часть: хлебные крошки (делаем лёгкими) */}
+    <nav className="text-sm text-emerald-700/80 flex flex-wrap items-center gap-1">
+  <Link href="/emotional-dictionary" className="hover:underline">
+    Библиотека
+  </Link>
+  <span>/</span>
+  <Link
+    href={`/emotional-dictionary?family=${encodeURIComponent(data.family)}`}
+    className="hover:underline"
+  >
+    {data.family.toUpperCase()}
+  </Link>
+  <span>/</span>
+  <span className="text-gray-700">{data.title}</span>
+</nav>
+  </div>
+</header>
         {/* Основной контент */}
-        <main className="mx-auto max-w-6xl px-4 pb-16 pt-8 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
+        <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
           {/* Левая колонка */}
-          <div className="space-y-4">
-            {/* Вкладки */}
+          <div className="space-y-6">
+            {/* Вкладки — всегда плиткой, без горизонтального скролла */}
             {tabs.length > 0 && (
               <div className="flex flex-wrap gap-2 text-sm">
                 {tabs.map((tab) => (
@@ -215,63 +217,75 @@ export default function EmotionDetailsPage({ params }: { params: { slug: string 
             )}
 
             {/* Контент вкладок */}
-            <section className="transition-opacity duration-300 space-y-4">
+            <section className="transition-opacity duration-300 space-y-6">
               {active === 'Погружение' && (
-                <>
-                  {/* 1) КАРТИНКА — КВАДРАТ/ПО ПО ШИРИНЕ, ВЫШЕ */}
-                  <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-                    {data.media?.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={data.media.image}
-                        alt=""
-                        className="w-full rounded-xl object-cover"
-                        style={{
-                          aspectRatio: '1 / 1', // квадрат
-                        }}
-                      />
-                    ) : (
-                      <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-white flex items-center justify-center text-emerald-700"
-                           style={{ aspectRatio: '1 / 1' }}>
-                        Иллюстрация (скоро)
-                      </div>
-                    )}
-                  </div>
+  <article className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
+    {/* MOBILE: картинка сверху, во всю ширину */}
+    <div className="md:hidden mb-4">
+      {data.media?.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={data.media.image} alt="" className="w-full rounded-xl object-cover" />
+      ) : (
+        <div className="h-56 rounded-xl bg-gradient-to-br from-emerald-100 to-white" />
+      )}
+    </div>
 
-                  {/* 2) НИЖЕ — АУДИО + ТЕКСТ ПОД НЕЙ (ОДНА КОЛОНКА) */}
-                  <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Аудио-погружение</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        3–4 минуты, чтобы прожить чувство телесно.
-                      </p>
-                      {data.media?.audio ? (
-                        <audio className="mt-3 w-full" controls preload="none">
-                          <source src={data.media.audio} type="audio/mp4" />
-                          <source src={data.media.audio} type="audio/x-m4a" />
-                          Ваш браузер не поддерживает аудио.
-                        </audio>
-                      ) : (
-                        <div className="mt-3 text-gray-400 text-sm">Аудио скоро появится</div>
-                      )}
-                    </div>
-                    {!!data.immersion?.length && (
-                      <div className="text-gray-700 leading-relaxed space-y-3">
-                        {data.immersion.map((p, i) => (
-                          <p key={i}>{p}</p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
+    {/* DESKTOP: «обтекаемая» квадратная обложка слева */}
+    <div className="hidden md:block">
+      <div
+        className="float-left mr-6 mb-4 rounded-xl overflow-hidden bg-gray-100 shadow-sm"
+        style={{
+          width: 340,         // квадрат
+          height: 340,
+          shapeOutside: 'inset(0 round 12px)', // мягкое обтекание
+        }}
+      >
+        {data.media?.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={data.media.image}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        ) : null}
+      </div>
+
+      {/* Аудио-плеер у правого края, выравниваем по верхнему краю текста */}
+      <div className="md:overflow-hidden">
+        <div className="md:max-w-md md:ml-auto">
+          <h3 className="text-lg font-semibold text-gray-900">Аудио-погружение</h3>
+          <p className="mt-1 text-sm text-gray-500">3–4 минуты, чтобы прожить чувство телесно.</p>
+          {data.media?.audio ? (
+            <audio className="mt-3 w-full" controls preload="none">
+              <source src={data.media.audio} type="audio/mp4" />
+              <source src={data.media.audio} type="audio/x-m4a" />
+              Ваш браузер не поддерживает аудио.
+            </audio>
+          ) : (
+            <div className="mt-3 text-gray-400 text-sm">Аудио скоро появится</div>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Текст «погружения»: сам обтекает картинку на десктопе */}
+    {!!data.immersion?.length && (
+      <div className="prose prose-emerald max-w-none md:prose-lg">
+        {data.immersion.map((p, i) => (
+          <p key={i} className="text-gray-800 leading-relaxed">{p}</p>
+        ))}
+      </div>
+    )}
+
+    {/* Чистим обтекание после текста */}
+    <div className="clear-both" />
+  </article>
+)}
 
               {active === 'Суть' && data.definition && (
                 <div className="rounded-2xl border bg-white p-6 shadow-sm">
                   <h2 className="text-2xl font-bold text-gray-900">Суть</h2>
-                  <p className="mt-3 text-gray-700 leading-relaxed max-w-3xl">
-                    {data.definition}
-                  </p>
+                  <p className="mt-3 text-gray-700 leading-relaxed md:max-w-3xl">{data.definition}</p>
                 </div>
               )}
 
@@ -451,10 +465,7 @@ export default function EmotionDetailsPage({ params }: { params: { slug: string 
               placeholder="Что откликнулось? Что заметили в теле/мыслях/поведении…"
             />
             <div className="mt-4 flex items-center justify-between gap-3">
-              <Link
-                href="/app/(employee)/journal"
-                className="text-sm text-emerald-700 hover:underline"
-              >
+              <Link href="/journal" className="text-sm text-emerald-700 hover:underline">
                 Открыть дневник →
               </Link>
               <div className="flex gap-2">
