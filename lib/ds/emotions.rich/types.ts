@@ -2,8 +2,8 @@
 
 // Медиа-блоки, которые можно прикрепить к подробному описанию эмоции
 export type RichEmotionMedia = {
-  image?: string;   // путь к иллюстрации, напр.: "/emotions/styd/illustration.png"
-  audio?: string;   // путь к аудио, напр.: "/emotions/styd/immersion.m4a"
+  image?: string;   // путь к иллюстрации, напр.: "/emotions/styd/cover.png"
+  audio?: string;   // путь к аудио, напр.: "/emotions/styd/immersion.mp3"
   video?: string;   // если решим добавить видео
   caption?: string; // подпись/описание медиа
   credits?: string; // автор/лицензия и т.п.
